@@ -3,29 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { background: #1b2838; color: #ffffff; font-family: "Microsoft YaHei", sans-serif; padding: 30px; text-align: center; }
-        .box { background: #2a475e; padding: 25px; border-radius: 12px; border: 1px solid #305d8a; }
-        h2 { margin-top: 0; color: #66c0f4; font-size: 20px; }
-        input { width: 85%; padding: 12px; margin: 20px 0; border-radius: 4px; border: none; background: #171a21; color: white; font-size: 16px; text-align: center; }
-        button { background: linear-gradient(to bottom, #799905 5%, #536904 95%); border: none; color: white; padding: 12px 40px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; }
-        button:hover { background: #799905; }
-        #status { margin-top: 25px; font-size: 13px; color: #8f98a0; line-height: 1.6; white-space: pre-wrap; }
+        body { background: #1b2838; color: #c6d4df; font-family: "Segoe UI", sans-serif; padding: 20px; text-align: center; }
+        .box { background: #2a475e; padding: 25px; border-radius: 10px; border: 1px solid #3d6b91; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
+        h3 { color: #66c0f4; margin-bottom: 25px; }
+        input { width: 85%; padding: 12px; margin-bottom: 20px; border-radius: 4px; border: 1px solid #000; background: #171a21; color: #fff; font-size: 16px; text-align: center; }
+        button { background: linear-gradient(to bottom, #a4d007 5%, #536904 95%); border: none; color: white; padding: 12px 30px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; }
+        button:hover { background: #a4d007; }
+        #status { margin-top: 25px; font-size: 13px; text-align: left; background: #171a21; padding: 15px; border-radius: 5px; color: #8f98a0; line-height: 1.5; white-space: pre-wrap; min-height: 80px; }
     </style>
 </head>
 <body>
     <div class="box">
-        <h2>Steam 自动入库</h2>
-        <input type="text" id="appid" placeholder="请输入游戏 AppID (如 1245620)">
-        <br>
-        <button onclick="run()">一键下载并入库</button>
-        <div id="status">等待输入指令...</div>
+        <h3>Steam 全库一键入库</h3>
+        <input type="text" id="appid" placeholder="输入 AppID (如: 1245620)">
+        <button onclick="run()">同步 10 个仓库并入库</button>
+        <div id="status">程序已就绪，请输入 ID 后点击按钮。</div>
     </div>
-
     <script>
         function run() {
             const id = document.getElementById('appid').value;
-            if(!id) { alert("请输入 ID"); return; }
-            document.getElementById('status').innerText = "⏳ 正在连接镜像仓库并检索清单...";
+            if(!id) { alert("请输入游戏 ID"); return; }
+            document.getElementById('status').innerText = "⏳ 正在轮询 10 个云端仓库...\n正在尝试: Cysaw / Github / Furcate...\n(大型数据库下载较慢，请等待 5-10 秒)";
             pywebview.api.run_unlock(id).then(res => {
                 document.getElementById('status').innerText = res;
             });
