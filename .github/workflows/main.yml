@@ -1,4 +1,4 @@
-name: 打包我的入库工具
+name: 打包入库助手
 on: [push]
 
 jobs:
@@ -6,25 +6,18 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - name: 安装 Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      - name: 安装依赖 (防止闪退的关键)
+      - name: Install dependencies
         run: |
-          # 必须安装所有引用的库
-          pip install requests pywebview[qt] pyinstaller Pillow
-      - name: 开始编译
+          pip install requests pywebview[qt] pyinstaller
+      - name: Build with PyInstaller
         run: |
-          # --add-data "index.html;." 表示把网页文件也塞进 EXE 内部
-          # --collect-all "webview" 确保界面组件不丢失
-          pyinstaller -F -w --clean `
-          --add-data "index.html;." `
-          --collect-all "webview" `
-          --name "SteamHelper_Beta" `
-          app.py
-      - name: 上传 EXE 成品
+          pyinstaller -F -w --clean --add-data "index.html;." --name "SteamUnlocker" app.py
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MyHelper_EXE
-          path: dist/SteamHelper_Beta.exe
+          name: SteamUnlocker_EXE
+          path: dist/SteamUnlocker.exe
