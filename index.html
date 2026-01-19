@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #1b2838; color: #c7d5e0; padding: 30px; text-align: center; }
+        .box { background: #2a475e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        input { padding: 12px; width: 70%; border: none; border-radius: 4px; background: #171a21; color: white; margin-bottom: 15px; }
+        button { padding: 12px 25px; background: #66c0f4; border: none; border-radius: 4px; color: white; cursor: pointer; font-weight: bold; }
+        button:hover { background: #4a91bb; }
+        #log { margin-top: 20px; text-align: left; background: #171a21; padding: 15px; border-radius: 4px; font-size: 13px; min-height: 100px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>Steam 入库助手</h2>
+        <input type="text" id="appid" placeholder="请输入游戏 AppID (如: 1245620)">
+        <br>
+        <button onclick="doSearch()">搜 索</button>
+        <div id="log">等待输入...</div>
+    </div>
+
+    <script>
+        function doSearch() {
+            const id = document.getElementById('appid').value;
+            if(!id) return alert("请输入 ID");
+            document.getElementById('log').innerText = "正在查询蔡工具数据库...";
+            
+            // 关键：调用 Python 里的 search_game 函数
+            pywebview.api.search_game(id).then(res => {
+                document.getElementById('log').innerText = res;
+            });
+        }
+    </script>
+</body>
+</html>
