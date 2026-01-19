@@ -1,36 +1,88 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #1b2838; color: #c7d5e0; padding: 30px; text-align: center; }
-        .box { background: #2a475e; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        input { padding: 12px; width: 70%; border: none; border-radius: 4px; background: #171a21; color: white; margin-bottom: 15px; }
-        button { padding: 12px 25px; background: #66c0f4; border: none; border-radius: 4px; color: white; cursor: pointer; font-weight: bold; }
-        button:hover { background: #4a91bb; }
-        #log { margin-top: 20px; text-align: left; background: #171a21; padding: 15px; border-radius: 4px; font-size: 13px; min-height: 100px; white-space: pre-wrap; }
-    </style>
-</head>
-<body>
-    <div class="box">
-        <h2>Steam 入库助手</h2>
-        <input type="text" id="appid" placeholder="请输入游戏 AppID (如: 1245620)">
-        <br>
-        <button onclick="doSearch()">搜 索</button>
-        <div id="log">等待输入...</div>
-    </div>
+import webview
+import requests
+import os
+import json
 
-    <script>
-        function doSearch() {
-            const id = document.getElementById('appid').value;
-            if(!id) return alert("请输入 ID");
-            document.getElementById('log').innerText = "正在查询蔡工具数据库...";
+# 蔡工具最核心的三个数据存放地址（使用镜像加速）
+SOURCES = [
+    "https://fastly.jsdelivr.net/gh/pvzcxw/cai-install_stloader@main/data.json",
+    "https://fastly.jsdelivr.net/gh/pvzcxw/Cai-install-Web-GUI@main/data/games.json",
+    "https://fastly.jsdelivr.net/gh/pvzcxw/Cai-install-Web-GUI@main/data/manifest_db.json"
+]
+
+class Api:
+    def __init__(self):
+        self.cache_db = {}
+
+    def load_database(self):
+        """启动时预加载，确保连接畅通"""
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        for url in SOURCES:
+            try:
+                res = requests.get(url, headers=headers, timeout=10)
+                if res.status_code == 200:
+                    self.cache_db.update(res.json())
+            except:
+                continue
+        return len(self.cache_db)
+
+    def run_unlock(self, app_id):
+        """执行入库核心逻辑"""
+        try:
+            target_id = str(app_id).strip()
             
-            // 关键：调用 Python 里的 search_game 函数
-            pywebview.api.search_game(id).then(res => {
-                document.getElementById('log').innerText = res;
-            });
-        }
-    </script>
-</body>
-</html>
+            # 1. 检查本地缓存库
+            if not self.cache_db:
+                self.load_database()
+            
+            game_data = self.cache_db.get(target_id)
+            if not game_data:
+                return f"❌ 搜遍了所有库，都没找到 AppID: {target_id}"
+
+            # 2. 定位 SteamTools 清单目录
+            # 路径通常是: C:/Users/用户名/AppData/Roaming/SteamTools/Manifests
+            st_path = os.path.join(os.getenv('APPDATA'), "SteamTools", "Manifests")
+            if not os.path.exists(st_path):
+                os.makedirs(st_path)
+
+            # 3. 提取清单并写入 (下载秘钥过程)
+            depots = game_data.get('depots', [])
+            if not depots:
+                return "❌ 该游戏数据不完整，没有清单信息。"
+
+            for d in depots:
+                did = d.get('depot_id')
+                mid = d.get('manifest_id')
+                key = d.get('key')
+                
+                if did and mid:
+                    # 构造文件
+                    file_name = f"{did}.manifest"
+                    file_path = os.path.join(st_path, file_name)
+                    # 写入 SteamTools 标准格式
+                    content = f"DepotID: {did}\nManifestID: {mid}\nKey: {key}\n"
+                    with open(file_path, "w", encoding="utf-8") as f:
+                        f.write(content)
+
+            game_name = game_data.get('name', '未知游戏')
+            return f"✅ 入库成功！\n游戏：{game_name}\n清单：已写入 {len(depots)} 个文件\n操作：请完全退出并重启 Steam。"
+
+        except Exception as e:
+            return f"程序出错: {str(e)}"
+
+def start():
+    api = Api()
+    # 启动后台预加载
+    api.load_database()
+    window = webview.create_window(
+        'Steam 极简入库助手 (测试版)', 
+        'index.html', 
+        js_api=api,
+        width=420,
+        height=400,
+        resizable=False
+    )
+    webview.start()
+
+if __name__ == '__main__':
+    start()
