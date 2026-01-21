@@ -3,30 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { background: #1b2838; color: #c6d4df; font-family: "Segoe UI", sans-serif; padding: 20px; text-align: center; }
-        .box { background: #2a475e; padding: 25px; border-radius: 10px; border: 1px solid #3d6b91; box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
-        h3 { color: #66c0f4; margin-bottom: 25px; }
-        input { width: 85%; padding: 12px; margin-bottom: 20px; border-radius: 4px; border: 1px solid #000; background: #171a21; color: #fff; font-size: 16px; text-align: center; }
-        button { background: linear-gradient(to bottom, #a4d007 5%, #536904 95%); border: none; color: white; padding: 12px 30px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; }
-        button:hover { background: #a4d007; }
-        #status { margin-top: 25px; font-size: 13px; text-align: left; background: #171a21; padding: 15px; border-radius: 5px; color: #8f98a0; line-height: 1.5; white-space: pre-wrap; min-height: 80px; }
+        body { background: #1b2838; color: #c6d4df; font-family: sans-serif; text-align: center; padding: 30px; }
+        .box { background: #2a475e; padding: 25px; border-radius: 8px; border: 1px solid #3d6b91; }
+        input { width: 85%; padding: 12px; margin: 15px 0; background: #171a21; color: #fff; border: 1px solid #3d6b91; border-radius: 4px; font-size: 18px; }
+        button { background: #67c1f5; color: white; border: none; padding: 12px; width: 90%; cursor: pointer; font-weight: bold; border-radius: 4px; }
+        #log { margin-top: 20px; font-size: 12px; color: #8f98a0; text-align: left; line-height: 1.6; }
     </style>
 </head>
 <body>
     <div class="box">
-        <h3>Steam 全库一键入库</h3>
-        <input type="text" id="appid" placeholder="输入 AppID (如: 1245620)">
-        <button onclick="run()">同步 10 个仓库并入库</button>
-        <div id="status">程序已就绪，请输入 ID 后点击按钮。</div>
+        <h3>Steam 全库助手</h3>
+        <input type="text" id="appid" placeholder="输入游戏 AppID">
+        <button onclick="caiSearch()">同步蔡工具源并入库</button>
+        <div id="log">准备就绪</div>
     </div>
+
     <script>
-        function run() {
-            const id = document.getElementById('appid').value;
-            if(!id) { alert("请输入游戏 ID"); return; }
-            document.getElementById('status').innerText = "⏳ 正在轮询 10 个云端仓库...\n正在尝试: Cysaw / Github / Furcate...\n(大型数据库下载较慢，请等待 5-10 秒)";
-            pywebview.api.run_unlock(id).then(res => {
-                document.getElementById('status').innerText = res;
-            });
+        async function caiSearch() {
+            const id = document.getElementById('appid').value.trim();
+            const log = document.getElementById('log');
+            if(!id) return;
+
+            log.innerText = "⏳ 正在同步全球数据仓库...\n";
+            // 蔡工具核心：取前两位做分片
+            const p = id.length > 2 ? id.substring(0, 2) : "0";
+            
+            // 直接搬运蔡工具源码中的 10 个源（精简为最稳的 4 个）
+            const urls = [
+                {n: "主力整合库", u: `https://cdn.jsdmirror.com/gh/pvzcxw/cai-install_stloader@main/data.json`, isAgg: true},
+                {n: "Github-SAC", u: `https://cdn.jsdmirror.com/gh/SteamAutoCracks/ManifestHub@main/data/${p}/${id}.json`},
+                {n: "Github-SWA", u: `https://cdn.jsdmirror.com/gh/SteamManifestArchives/ManifestHub@main/data/${p}/${id}.json`},
+                {n: "Github-Auiowu", u: `https://cdn.jsdmirror.com/gh/Auiowu/ManifestAutoUpdate@master/manifests/${id}.json`}
+            ];
+
+            let result = null;
+            for (let s of urls) {
+                log.innerText += `🔍 正在撞库: ${s.n}...\n`;
+                try {
+                    const res = await fetch(s.u);
+                    if (res.ok) {
+                        const json = await res.json();
+                        const data = s.isAgg ? json[id] : json;
+                        if (data) {
+                            result = parse(data);
+                            break;
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            if (result && result.length > 0) {
+                const info = await pywebview.api.sync_to_steam(JSON.stringify(result));
+                log.innerText = info;
+            } else {
+                log.innerText = "❌ 蔡工具的所有源里都没这个 ID，建议确认 ID 是否正确。";
+            }
+        }
+
+        // 蔡工具万能解析逻辑
+        function parse(d) {
+            let list = [];
+            if (d.depots) {
+                list = d.depots.map(x => ({did: x.depot_id, mid: x.manifest_id, key: x.key || ""}));
+            } else {
+                for (let k in d) {
+                    if (d[k].manifest || d[k].manifest_id) {
+                        list.push({did: k, mid: d[k].manifest || d[k].manifest_id, key: d[k].key || ""});
+                    }
+                }
+            }
+            return list;
         }
     </script>
 </body>
